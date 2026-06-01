@@ -3,6 +3,7 @@
 
 #include "TPSProject/Public/TPSPlayer.h"
 
+#include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 
 
@@ -17,6 +18,11 @@ ATPSPlayer::ATPSPlayer()
 	springArmComp->SetupAttachment(RootComponent);//루트에 자식
 	springArmComp->SetRelativeLocation(FVector(0.0f, 70.0f, 90.0f));//시작 위치 변경
 	springArmComp->TargetArmLength = 400.0f; //암 길이
+	
+	//카메라 컴포넌트
+	cameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
+	cameraComp->SetupAttachment(springArmComp);
+	
 }
 
 // Called when the game starts or when spawned
