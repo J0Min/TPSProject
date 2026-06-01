@@ -47,6 +47,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = Input)
 	class UInputAction* ia_Move;
 	
+	UPROPERTY(EditDefaultsOnly, Category = Input)
+	class UInputAction* ia_Jump;
+	
 	//이동 속도
 	UPROPERTY(EditDefaultsOnly, Category = PlayerSetting)
 	float walkSpeed = 600.f;
@@ -57,5 +60,5 @@ public:
 	void Move(const struct FInputActionValue& inputValue);
 	void LookUP(const struct FInputActionValue& inputValue);
 	void Turn(const struct FInputActionValue& inputValue);
-	
+	void InputJump(const struct FInputActionValue& inputValue);
 };

@@ -72,6 +72,7 @@ void ATPSPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent
 		PlayerInput -> BindAction(ia_Move, ETriggerEvent::Triggered, this, &ATPSPlayer::Move);
 		PlayerInput -> BindAction(ia_LookUP, ETriggerEvent::Triggered, this, &ATPSPlayer::LookUP);
 		PlayerInput -> BindAction(ia_Turn, ETriggerEvent::Triggered, this, &ATPSPlayer::Turn);
+		PlayerInput -> BindAction(ia_Jump, ETriggerEvent::Started, this, &ATPSPlayer::InputJump);
 	}
 }
 
@@ -92,5 +93,11 @@ void ATPSPlayer::Turn(const struct FInputActionValue& inputValue)
 {
 	float value = inputValue.Get<float>();
 	AddControllerYawInput(value);// Z축 회전
+}
+
+void ATPSPlayer::InputJump(const struct FInputActionValue& inputValue)
+{
+	//ACharater 내부의 기본 제공 점프 함수
+	Jump();
 }
 
