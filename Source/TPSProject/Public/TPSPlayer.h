@@ -33,4 +33,29 @@ public:
 	//카메라 컴포넌트
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class UCameraComponent* cameraComp;
+
+	//입력부
+	UPROPERTY(EditDefaultsOnly, Category = Input)
+	class UInputMappingContext* imc_TPS;
+	
+	UPROPERTY(EditDefaultsOnly, Category = Input)
+	class UInputAction* ia_LookUP;
+	
+	UPROPERTY(EditDefaultsOnly, Category = Input)
+	class UInputAction* ia_Turn;
+	
+	UPROPERTY(EditDefaultsOnly, Category = Input)
+	class UInputAction* ia_Move;
+	
+	//이동 속도
+	UPROPERTY(EditDefaultsOnly, Category = PlayerSetting)
+	float walkSpeed = 600.f;
+	
+	//이동 방향
+	FVector direction;
+	
+	void Move(const struct FInputActionValue& inputValue);
+	void LookUP(const struct FInputActionValue& inputValue);
+	void Turn(const struct FInputActionValue& inputValue);
+	
 };
