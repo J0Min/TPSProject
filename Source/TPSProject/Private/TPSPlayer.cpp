@@ -3,12 +3,20 @@
 
 #include "TPSProject/Public/TPSPlayer.h"
 
+#include "GameFramework/SpringArmComponent.h"
+
 
 // Sets default values
 ATPSPlayer::ATPSPlayer()
 {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	
+	//TPS 카메라를 SpringArm에 부착
+	springArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
+	springArmComp->SetupAttachment(RootComponent);//루트에 자식
+	springArmComp->SetRelativeLocation(FVector(0.0f, 70.0f, 90.0f));//시작 위치 변경
+	springArmComp->TargetArmLength = 400.0f; //암 길이
 }
 
 // Called when the game starts or when spawned
