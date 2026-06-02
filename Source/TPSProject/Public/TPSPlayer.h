@@ -132,6 +132,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = BulletFactory)
 	TSubclassOf<class ABullet> bulletFactory;
 	
+	// 스나이퍼 총 스태틱 메시 컴포넌트 선언
+	UPROPERTY(VisibleAnywhere, Category=GunMesh)
+	class UStaticMeshComponent* sniperMeshComp;
+	
 	// 이동 방향
 	FVector direction;
 	
