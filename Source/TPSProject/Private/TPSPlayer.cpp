@@ -123,8 +123,10 @@
 #include "Bullet.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Blueprint/UserWidget.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "UObject/ConstructorHelpers.h"
 
 
 // Sets default values
@@ -161,18 +163,23 @@ ATPSPlayer::ATPSPlayer()
 	}
 	
 	// 스나이퍼 건 스태틱 메시 컴포넌트 등록
-	sniperMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SniperGun StaticMeshComponent"));
+	sniperGunComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SniperGun StaticMeshComponent"));
 	// 캐릭터 메시 컴포넌트(GetMesh()) 부모에 부착
-	sniperMeshComp->SetupAttachment(GetMesh());
+	sniperGunComp->SetupAttachment(GetMesh());
 	// 스태틱 메시 데이터 동적로드
-	ConstructorHelpers::FObjectFinder<UStaticMesh> TempSniperGunMesh(TEXT("/Script/Engine.StaticMesh'/Game/Weapons/Sniper/sniper1.sniper1'"));
+	ConstructorHelpers::FObjectFinder<UStaticMesh> TempSniperGunMesh(TEXT("/Script/Engine.StaticMesh'/Game/Weapons/sniper/source/Meshes/sniper1.sniper1'"));
 	if (TempSniperGunMesh.Succeeded())
 	{
 		// 해당 경로의 스태틱메시를 찾았다면, 메시 할당 + 임시 위치 보정
-		sniperMeshComp->SetStaticMesh(TempSniperGunMesh.Object);
-		sniperMeshComp->SetRelativeLocation(FVector(-14.0f, 52.0f, 120.0f));
-		sniperMeshComp->SetRelativeScale3D(FVector(0.8f));
+		sniperGunComp->SetStaticMesh(TempSniperGunMesh.Object);
+		sniperGunComp->SetRelativeLocation(FVector(-14.0f, 52.0f, 120.0f));
+		sniperGunComp->SetRelativeScale3D(FVector(0.8f));
 	}
+	
+	//시작시 기본 무기로 스나이퍼 사용
+	bUsingGrenadeGun  = false;
+	sniperGunComp->SetVisibility(true);
+	gunMeshComp->SetVisibility(false);
 }
 
 // Called when the game starts or when spawned
@@ -190,6 +197,9 @@ void ATPSPlayer::BeginPlay()
 			subsystem->AddMappingContext(imc_TPS, 0);
 		}
 	}
+	
+	//스나이퍼 UI 위젯 인스턴스 생성
+	sniperUI = CreateWidget(GetWorld(), sniperFactory);
 }
 
 // Called every frame
@@ -230,6 +240,10 @@ void ATPSPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent
 		PlayerInput->BindAction(ia_Move, ETriggerEvent::Triggered, this, &ATPSPlayer::Move);
 		PlayerInput->BindAction(ia_Jump, ETriggerEvent::Started, this, &ATPSPlayer::InputJump);
 		PlayerInput->BindAction(ia_Fire, ETriggerEvent::Started, this, &ATPSPlayer::InputFire);
+		PlayerInput->BindAction(ia_GranedeGun, ETriggerEvent::Started, this, &ATPSPlayer::ChangeToGrenadeGun);
+		PlayerInput->BindAction(ia_SniperGun, ETriggerEvent::Started, this, &ATPSPlayer::ChangeToSniperGun);
+		PlayerInput->BindAction(ia_SniperZoom, ETriggerEvent::Started, this, &ATPSPlayer::SniperZoom);
+		PlayerInput->BindAction(ia_SniperZoom, ETriggerEvent::Completed, this, &ATPSPlayer::SniperZoom);
 	}
 }
 
@@ -267,4 +281,38 @@ void ATPSPlayer::InputFire(const FInputActionValue& inputValue)
 	FTransform firePosition = gunMeshComp->GetSocketTransform(TEXT("FirePosition"));
 	// 위 위치/회전으로 BulletFactory가 BP_Bullet 인스턴스를 월드에 스폰
 	GetWorld()->SpawnActor<ABullet>(bulletFactory, firePosition);
+}
+
+void ATPSPlayer::ChangeToGrenadeGun(const struct FInputActionValue& inputValue)
+{                                                                  
+	bUsingGrenadeGun  = true;
+	sniperGunComp->SetVisibility(false);
+	gunMeshComp->SetVisibility(true);
+}
+
+void ATPSPlayer::ChangeToSniperGun(const struct FInputActionValue& inputValue)
+{
+	bUsingGrenadeGun  = false;
+	sniperGunComp->SetVisibility(true);
+	gunMeshComp->SetVisibility(false);
+}
+
+void ATPSPlayer::SniperZoom()
+{
+	if (bUsingGrenadeGun)
+	{
+		return;
+	}
+	
+	if (bsniperZoom == false)
+	{
+		bsniperZoom = true;
+		sniperUI->AddToViewport();
+		cameraComp->SetFieldOfView(45.f);
+	}else
+	{
+		bsniperZoom = false;
+		sniperUI->RemoveFromViewport();
+		cameraComp->SetFieldOfView(90.f);
+	}
 }

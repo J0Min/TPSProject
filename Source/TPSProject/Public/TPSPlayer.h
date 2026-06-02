@@ -134,10 +134,33 @@ public:
 	
 	// 스나이퍼 총 스태틱 메시 컴포넌트 선언
 	UPROPERTY(VisibleAnywhere, Category=GunMesh)
-	class UStaticMeshComponent* sniperMeshComp;
+	class UStaticMeshComponent* sniperGunComp;
+	
+	// 현재 유탕총을 사용중인지 여부 (true = 유탄총, false = 스나이퍼)
+	bool bUsingGrenadeGun  = true;
+	
+	UPROPERTY(EditDefaultsOnly, Category = Input)
+	class UInputAction* ia_GranedeGun;
+	
+	UPROPERTY(EditDefaultsOnly, Category = Input)
+	class UInputAction* ia_SniperGun;
+	
+	UPROPERTY(EditDefaultsOnly, Category = Input)
+	class UInputAction* ia_SniperZoom;
+	
+	//스나이퍼 UI 위젯 팩토리 (WBP_SniperUI에서 할당 필요)
+	UPROPERTY(EditDefaultsOnly, Category = SniperUI)
+	TSubclassOf<class UUserWidget> sniperFactory;
 	
 	// 이동 방향
 	FVector direction;
+	
+	//현재 줌 상태인지 체크
+	bool bsniperZoom = false;
+	
+	//런타일에 생성될 UI 인스턴스 /GC보호용 빈 프로퍼티
+	UPROPERTY()
+	class UUserWidget* sniperUI;
 	
 	// 상하 회전 입력 함수 선언
 	void LookUp(const struct FInputActionValue& inputValue);
@@ -153,4 +176,12 @@ public:
 	
 	// 총알 발사 입력 함수 선언
 	void InputFire(const struct FInputActionValue& inputValue);
+	
+	//유탄총 교체 함수
+	void ChangeToGrenadeGun(const struct FInputActionValue& inputValue);
+	
+	//스나이퍼건 교체 함수
+	void ChangeToSniperGun(const struct FInputActionValue& inputValue);
+	
+	void SniperZoom();
 };
