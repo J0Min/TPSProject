@@ -2,6 +2,9 @@
 
 
 #include "EnemyFSM.h"
+#include "TPSPlayer.h"
+#include "Enemy.h"
+#include "Kismet/GameplayStatics.h"
 
 
 // Sets default values for this component's properties
@@ -20,7 +23,12 @@ void UEnemyFSM::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// ...
+	// 월드에서 ATPSPlayer 타겟 찾기
+	auto actor = UGameplayStatics::GetActorOfClass(GetWorld(), ATPSPlayer::StaticClass());
+	// 찾은 actor를 ATPSPlayer 타입으로 캐스팅
+	target = Cast<ATPSPlayer>(actor);
+	// 소유 객체
+	me = Cast<AEnemy>(GetOwner());
 	
 }
 
@@ -59,19 +67,45 @@ void UEnemyFSM::IdleState()
 		mState = EEnemyState::Move;
 		// 경과 시간 초기화
 		currentTime = 0.f;
+		
 	}
 }
 
 // 추적상태
 void UEnemyFSM::MoveState()
 {
+	// 타겍 목적지
+	FVector destination = target->GetActorLocation();
+	// 타겟 방향 설정
+	FVector dir = destination - me->GetActorLocation();
+	// 타겟 방향으로 이동
+	me->AddMovementInput(dir.GetSafeNormal());
 	
+	// Attack 상태로 전환
+	// 공격범위 안으로 들어오면
+	if ( dir.Size() < attackRange)
+	{
+		mState = EEnemyState::Attack;
+	}
 }
 
 // 공격상태
 void UEnemyFSM::AttackState()
 {
-	
+	currentTime += GetWorld()->GetDeltaSeconds();
+    
+	if (currentTime > attackDelayTime)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Attack!"));
+		currentTime = 0;
+	}
+    
+	// 타겟이 공격 범위를 벗어나면 -> Move 상태로 전환
+	float distance = FVector::Distance(target->GetActorLocation(), me->GetActorLocation());
+	if (distance > attackRange)
+	{
+		mState = EEnemyState::Move;
+	}
 }
 
 // 피격상태

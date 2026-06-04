@@ -51,4 +51,18 @@ public:
 	
 	// 경과 시간(누적)
 	float currentTime = 0.f;
+	
+	// 목표 타겟
+	UPROPERTY(VisibleAnywhere, Category = FSM)
+	class ATPSPlayer* target;
+	
+	UPROPERTY()
+	class AEnemy* me;
+	
+	UPROPERTY(EditDefaultsOnly, Category = FSM)
+	float attackRange = 150.f;
+	
+	// 공격 대기 시간
+	UPROPERTY(EditDefaultsOnly, Category = FSM)
+	float attackDelayTime = 1.f;
 };
