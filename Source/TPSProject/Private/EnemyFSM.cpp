@@ -30,6 +30,13 @@ void UEnemyFSM::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	// [Debug] 
+	if (GEngine)
+	{
+		FString logMsg = UEnum::GetValueAsString(mState);
+		GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Cyan, logMsg);
+	}
+	
 	// 현재 상태에 따라 해당 함수만 실행 - FSM
 	switch (mState)
 	{
@@ -44,7 +51,15 @@ void UEnemyFSM::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 // 대기상태
 void UEnemyFSM::IdleState()
 {
+	// 시간 누적
+	currentTime += GetWorld()->GetDeltaSeconds();
 	
+	if (currentTime > idleDelayTime)
+	{
+		mState = EEnemyState::Move;
+		// 경과 시간 초기화
+		currentTime = 0.f;
+	}
 }
 
 // 추적상태
