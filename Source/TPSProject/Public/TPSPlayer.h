@@ -162,6 +162,12 @@ public:
 	UPROPERTY()
 	class UUserWidget* sniperUI;
 	
+	UPROPERTY()
+	class UUserWidget* crosshairUI;
+	
+	UPROPERTY(EditDefaultsOnly, Category="SniperUI")
+	TSubclassOf<class UUserWidget> crosshairUIFactory;
+	
 	// 상하 회전 입력 함수 선언
 	void LookUp(const struct FInputActionValue& inputValue);
 	
@@ -184,4 +190,8 @@ public:
 	void ChangeToSniperGun(const struct FInputActionValue& inputValue);
 	
 	void SniperZoom();
+	
+	//스나이퍼 사격 명중시 표시될 총알 파편 효과 선언
+	UPROPERTY(EditDefaultsOnly, Category = BulletEffect)
+	class UNiagaraSystem* bulletEffectFactory;
 };

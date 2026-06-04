@@ -120,6 +120,7 @@
 //
 #include "TPSProject/Public/TPSPlayer.h"
 
+#include "NiagaraFunctionLibrary.h"
 #include "Bullet.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -153,6 +154,10 @@ ATPSPlayer::ATPSPlayer()
 	gunMeshComp = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("GunMeshComponent"));
 	// 캐릭터 메시 컴포넌트(GetMesh()) 부모에 부착
 	gunMeshComp->SetupAttachment(GetMesh());
+	
+	//LineTrace가 총에 막히지 않도록 충돌 해제
+	gunMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
 	// 스켈레탈 메시 데이터 동적로드
 	ConstructorHelpers::FObjectFinder<USkeletalMesh> TempGunMesh(TEXT("/Script/Engine.SkeletalMesh'/Game/Weapons/GrenadeLauncher/Meshes/SKM_GrenadeLauncher.SKM_GrenadeLauncher'"));
 	if (TempGunMesh.Succeeded())
@@ -166,6 +171,10 @@ ATPSPlayer::ATPSPlayer()
 	sniperGunComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SniperGun StaticMeshComponent"));
 	// 캐릭터 메시 컴포넌트(GetMesh()) 부모에 부착
 	sniperGunComp->SetupAttachment(GetMesh());
+	
+	//LineTrace가 총에 막히지 않도록 충돌 해제
+	sniperGunComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
 	// 스태틱 메시 데이터 동적로드
 	ConstructorHelpers::FObjectFinder<UStaticMesh> TempSniperGunMesh(TEXT("/Script/Engine.StaticMesh'/Game/Weapons/sniper/source/Meshes/sniper1.sniper1'"));
 	if (TempSniperGunMesh.Succeeded())
@@ -200,6 +209,12 @@ void ATPSPlayer::BeginPlay()
 	
 	//스나이퍼 UI 위젯 인스턴스 생성
 	sniperUI = CreateWidget(GetWorld(), sniperFactory);
+	//일반 조준 크로스헤어 UI 위젯 인스턴스 생성 -> AddViewport로 호출
+	crosshairUI = CreateWidget(GetWorld(), crosshairUIFactory); 
+	if (crosshairUI)
+	{
+		crosshairUI->AddToViewport(); // 일반 조준선 가림
+	}
 }
 
 // Called every frame
@@ -277,10 +292,64 @@ void ATPSPlayer::InputJump(const FInputActionValue& inputValue)
 
 void ATPSPlayer::InputFire(const FInputActionValue& inputValue)
 {
-	// 총 스켈레탈메시에 FirePosition 이란 이름의 소켓의 월드 트랜스폼(위치/회전)을 가져옴
-	FTransform firePosition = gunMeshComp->GetSocketTransform(TEXT("FirePosition"));
-	// 위 위치/회전으로 BulletFactory가 BP_Bullet 인스턴스를 월드에 스폰
-	GetWorld()->SpawnActor<ABullet>(bulletFactory, firePosition);
+	if (bUsingGrenadeGun)//유탄 사용
+	{
+		// 총 스켈레탈메시에 FirePosition 이란 이름의 소켓의 월드 트랜스폼(위치/회전)을 가져옴
+		// FTransform firePosition = gunMeshComp->GetSocketTransform(TEXT("FirePosition"));
+		FVector spawnLoc = gunMeshComp->GetSocketLocation(TEXT("FirePosition"));
+		FRotator spawnRot = cameraComp->GetComponentRotation();
+		
+		// 위 위치/회전으로 BulletFactory가 BP_Bullet 인스턴스를 월드에 스폰
+		GetWorld()->SpawnActor<ABullet>(bulletFactory, spawnLoc, spawnRot);
+	}else//스나이퍼 사용
+	{
+		//시작과 종료 위치 설정
+		FVector startpos = cameraComp->GetComponentLocation();
+		FVector endpos = startpos + cameraComp->GetForwardVector() * 5000.f;
+		
+		//충돌 결과 저장 / 자기 자신을 충돌 검사에서 제외
+		FHitResult hitResult;
+		FCollisionQueryParams params;
+		params.AddIgnoredActor(this);
+		
+		//LineTraceSingleByChannel(결과그릇, 시작위치, 종료위치, 트레이스채널, 충돌옵션)
+		bool bHit = GetWorld()->LineTraceSingleByChannel(hitResult, startpos, 
+			endpos, ECC_Visibility, params);
+		//Visibility 채널로 라인트레이스 수행 -> 처음 부딪힌 하나의 액터에서 정지
+		//LineTrace 경로 시각화 / 초록 충돌, 빨강 미충돌
+		DrawDebugLine(GetWorld(), startpos, endpos, bHit? FColor::Green : FColor::Red,
+			false, 1.f, 0, .2f);
+		
+		if (bHit)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Hit : Actor->%s, Comp->%s, Distance->%.1f, ImpactPoint->%s"),
+				hitResult.GetActor()? *hitResult.GetActor()->GetName():TEXT("None"),
+				hitResult.GetComponent()? *hitResult.GetComponent()->GetName():TEXT("None"),
+				hitResult.Distance, *hitResult.ImpactPoint.ToString());
+
+			// [DEBUG] 타격 위치 시각화
+			DrawDebugSphere(GetWorld(), hitResult.ImpactPoint, 20.f, 12, FColor::Yellow, false, 2.f);
+			
+			// 타격 위치에 Niagara 이펙트 스폰
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), bulletEffectFactory, hitResult.ImpactPoint);
+			
+			// 타격 물체에 물리 엔진 적용
+			UPrimitiveComponent* hitComp = hitResult.GetComponent();
+			if (hitComp && hitComp-> IsSimulatingPhysics())
+			{
+				// F=ma 방향 * 질량 * 가속도
+				// 1. 조준 방향 - 시작점에서 종료점 방향
+				FVector dir = (endpos - startpos).GetSafeNormal();
+				// 2. 날려보낼 힘
+				FVector force = dir * hitComp->GetMass() * 20000.f;
+				// 3. 타격된 지점에 힘을 작용
+				// AddForce(F) - 무게중심에 힘을 작용 -> 회전없고, 평행이동
+				// AddForceAtlocation(F, pos) - 특정 위치에 힘-> 회전(토크)가 발생한다. ex: 모서리 맞으면 빙글빙글 돌면서 뒤로 밀림;
+				hitComp->AddForceAtLocation(force, hitResult.ImpactPoint);
+			}
+			
+		}
+	}
 }
 
 void ATPSPlayer::ChangeToGrenadeGun(const struct FInputActionValue& inputValue)
