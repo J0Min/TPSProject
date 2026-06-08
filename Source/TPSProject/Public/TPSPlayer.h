@@ -126,7 +126,11 @@ public:
 	
 	// 이동 속도
 	UPROPERTY(EditDefaultsOnly, Category = PlayerSetting)
-	float walkSpeed = 600.f;
+	float walkSpeed = 300.f;
+	
+	//달리기 속도
+	UPROPERTY(EditDefaultsOnly, Category = PlayerSetting)
+	float runSpeed = 600.f;
 	
 	// 총알 스폰 팩토리
 	UPROPERTY(EditDefaultsOnly, Category = BulletFactory)
@@ -147,6 +151,10 @@ public:
 	
 	UPROPERTY(EditDefaultsOnly, Category = Input)
 	class UInputAction* ia_SniperZoom;
+	
+	//걷기 IA 필드 선언 - 기본(달리기),누르고 있으면(걷기)
+	UPROPERTY(EditDefaultsOnly, Category = Input)
+	class UInputAction* ia_Walk;
 	
 	//스나이퍼 UI 위젯 팩토리 (WBP_SniperUI에서 할당 필요)
 	UPROPERTY(EditDefaultsOnly, Category = SniperUI)
@@ -190,6 +198,8 @@ public:
 	void ChangeToSniperGun(const struct FInputActionValue& inputValue);
 	
 	void SniperZoom();
+	
+	void InputWalk();
 	
 	//스나이퍼 사격 명중시 표시될 총알 파편 효과 선언
 	UPROPERTY(EditDefaultsOnly, Category = BulletEffect)

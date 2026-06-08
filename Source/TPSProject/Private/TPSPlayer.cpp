@@ -125,9 +125,12 @@
 #include "EnemyFSM.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "TPSPlayerAnim.h"
 #include "Blueprint/UserWidget.h"
 #include "Camera/CameraComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "GameFramework/Character.h"
 #include "UObject/ConstructorHelpers.h"
 
 
@@ -197,6 +200,9 @@ void ATPSPlayer::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	//초기 이동 속도를 달리기로 설정 (기본-달리기, Shift-걷기)
+	GetCharacterMovement()->MaxWalkSpeed = runSpeed;
+	
 	// Enhanced Input 시스템이 IMC_TPS 사용하도록 설정
 	auto pc = Cast<APlayerController>(Controller);
 	if (pc)
@@ -259,7 +265,9 @@ void ATPSPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent
 		PlayerInput->BindAction(ia_GranedeGun, ETriggerEvent::Started, this, &ATPSPlayer::ChangeToGrenadeGun);
 		PlayerInput->BindAction(ia_SniperGun, ETriggerEvent::Started, this, &ATPSPlayer::ChangeToSniperGun);
 		PlayerInput->BindAction(ia_SniperZoom, ETriggerEvent::Started, this, &ATPSPlayer::SniperZoom);
-		PlayerInput->BindAction(ia_SniperZoom, ETriggerEvent::Completed, this, &ATPSPlayer::SniperZoom);
+		//PlayerInput->BindAction(ia_SniperZoom, ETriggerEvent::Completed, this, &ATPSPlayer::SniperZoom);
+		PlayerInput->BindAction(ia_Walk, ETriggerEvent::Started, this, &ATPSPlayer::InputWalk);
+		PlayerInput->BindAction(ia_Walk, ETriggerEvent::Completed, this, &ATPSPlayer::InputWalk);
 	}
 }
 
@@ -293,6 +301,16 @@ void ATPSPlayer::InputJump(const FInputActionValue& inputValue)
 
 void ATPSPlayer::InputFire(const FInputActionValue& inputValue)
 {
+	//발사 동작 몽타주를 재생(유탄/스나이퍼 공용)
+	//애니메이션 재생 책임은 AnimInstance가 담당 / 여기선 호출만 진행
+	auto anim = Cast<UTPSPlayerAnim>(GetMesh()->GetAnimInstance());
+	if (anim)
+	{
+		anim->PlayerAttackAnim();
+	}
+	
+	
+	
 	if (bUsingGrenadeGun)//유탄 사용
 	{
 		// 총 스켈레탈메시에 FirePosition 이란 이름의 소켓의 월드 트랜스폼(위치/회전)을 가져옴
@@ -392,5 +410,18 @@ void ATPSPlayer::SniperZoom()
 		bsniperZoom = false;
 		sniperUI->RemoveFromViewport();
 		cameraComp->SetFieldOfView(90.f);
+	}
+}
+
+void ATPSPlayer::InputWalk()
+{
+	auto movement = GetCharacterMovement();
+	//현재 달리기 모드라면, max가 walk보다 큼 -> 걷기로 전환
+	if (movement->MaxWalkSpeed > walkSpeed)
+	{
+		movement->MaxWalkSpeed = walkSpeed;
+	}else//걷기 모드라면 -> 달리기 모드로 복구 (Shift를 뗀 상황)
+	{
+		movement->MaxWalkSpeed = runSpeed;
 	}
 }
